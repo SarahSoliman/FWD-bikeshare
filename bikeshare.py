@@ -1,12 +1,13 @@
 import time
 import pandas as pd
 from termcolor import colored
+from tabulate import tabulate
 
 CITY_DATA = {'chicago': 'chicago.csv',
              'new york city': 'new_york_city.csv',
              'washington': 'washington.csv'}
-MONTHS = ['all', 'jan', 'feb', 'mar', 'apr', 'may', 'jun']
-DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun', 'all']
+MONTHS = ['All', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'All']
 
 
 def get_filters():
@@ -21,31 +22,40 @@ def get_filters():
     print('Hello! Let\'s explore some US bikeshare data!')
 
     trials = 0
-    city = input('Please choose one of these cities to view its data (chicago, new york city, washington):')
+    city = input(colored('Please choose one of these cities to view its data (Chicago, New York City, Washington):',
+                         attrs=['bold']))
+    city = city.lower()
     while city not in CITY_DATA.keys():
         city = input(
             colored('Invalid input!\n', 'red')
-            + 'Please try again to choose one of these cities to view its data (chicago, new york city, washington):')
+            + colored(
+                'Please try again to choose one of these cities to view its data (chicago, new york city, washington):',
+                attrs=['bold']))
+        city = city.lower()
         trials += 1
         if trials == 5:
             raise Exception('Entered an invalid city too many times')
 
     trials = 0
-    month = input("Please choose a month to filter by {}:".format(MONTHS))
+    month = input(colored("Please choose a month to filter by {}:".format(MONTHS), attrs=['bold']))
+    month = month.capitalize()
     while month not in MONTHS:
         month = input(
             colored('Invalid input!\n', 'red')
-            + 'Please try again to choose a month to filter by {}:'.format(MONTHS))
+            + colored('Please try again to choose a month to filter by {}:'.format(MONTHS), attrs=['bold']))
+        month = month.capitalize()
         trials += 1
         if trials == 5:
             raise Exception('Entered an invalid month too many times')
 
     trials = 0
-    day = input('Please choose a day to filter by {}:'.format(DAYS))
+    day = input(colored('Please choose a day to filter by {}:'.format(DAYS), attrs=['bold']))
+    day = day.capitalize()
     while day not in DAYS:
         day = input(
             colored('Invalid input!\n', 'red')
-            + 'Please try again to choose a day to filter by {}:'.format(DAYS))
+            + colored('Please try again to choose a day to filter by {}:'.format(DAYS), attrs=['bold']))
+        day = day.capitalize()
         trials += 1
         if trials == 5:
             raise Exception('Entered an invalid day too many times')
@@ -63,7 +73,6 @@ def validate_headers(df, headers):
 def load_data(city, month, day):
     """
     Loads data for the specified city and filters by month and day if applicable.
-
     Args:
         (str) city - name of the city to analyze
         (str) month - name of the month to filter by, or "all" to apply no month filter
@@ -73,20 +82,40 @@ def load_data(city, month, day):
     """
     df = pd.read_csv(CITY_DATA[city])
     validate_headers(df, ['Start Time', 'Start Station', 'End Station', 'Trip Duration', 'User Type'])
-    df['Start Time'] = pd.to_datetime(df['Start Time'])
 
     # extract month and day of week from Start Time to create new columns
+    df['Start Time'] = pd.to_datetime(df['Start Time'])
     df['hour'] = df['Start Time'].apply(lambda x: x.hour)
     df['month'] = df['Start Time'].apply(lambda x: x.month)
     df['day_of_week'] = df['Start Time'].apply(lambda x: x.weekday())
 
-    if month != 'all':
+    if month != 'All':
         df = df[df['month'] == MONTHS.index(month)]
 
-    if day != 'all':
+    if day != 'All':
         df = df[df['day_of_week'] == DAYS.index(day)]
 
     return df
+
+
+def show_raw_data(df):
+    """
+    prompts the user if they want to see raw data and keeps displaying as much data as requested
+    Args:
+        df: Pandas DataFrame that holds the data to display
+    """
+    show_lines = input(colored('Do you want to see some raw data? Enter yes or no.\n', 'green'))
+    index = 0
+    while show_lines.lower() == 'yes':
+        print(
+            tabulate(df.iloc[index:index + 5].drop(['hour', 'month', 'day_of_week'], axis=1), headers=df.columns.values,
+                     tablefmt="rst",
+                     showindex=False))
+        index += 5
+        if index >= len(df):
+            print(colored('You have reached the end of file!', 'blue'))
+            break
+        show_lines = input(colored('\nDo you want to see the next 5 lines? Enter yes or no.\n', 'green'))
 
 
 def time_stats(df):
@@ -208,8 +237,14 @@ def main():
     try:
         while True:
             city, month, day = get_filters()
+
             df = load_data(city, month, day)
 
+            if len(df) < 1:
+                print(colored('Not enough data to continue processing, please try other filters', 'blue'))
+                continue
+
+            show_raw_data(df)
             time_stats(df)
             station_stats(df)
             trip_duration_stats(df)
