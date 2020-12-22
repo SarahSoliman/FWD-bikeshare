@@ -1,0 +1,2 @@
+pandas==0.24.2
+termcolor==1.1.0
